@@ -20,7 +20,7 @@ lapply(libs, function(x) {
 })
 
 # 2. DATA LOADING & PRE-PROCESSING -----------------------------------------
-base_filtrada <- read.csv("dados_sinteticos_hc1.csv", header = TRUE, 
+base_filtrada <- read.csv("synthetic_data_hc.csv", header = TRUE, 
                           sep = ",", na.strings = c("NA",""), dec = ".")
 
 # Handling potential string "NA" and cleaning (Adjusting to use base_filtrada)
