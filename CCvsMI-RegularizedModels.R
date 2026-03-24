@@ -125,64 +125,6 @@ n_fitlasso <- predict(cv_adaptive_lasso, newx = as.matrix(newx),
 n_fitenet <- predict(best_model, newx = as.matrix(newx), 
                      s = "lambda.min", type = "response")
 
-
-# Obtaining AUC from models
-roc_object_lasso <- roc(y.testlasso,n_fitlasso, auc=T, ci=T); roc_object_lasso
-roc_object_enet <- roc(y.testlasso,n_fitenet, auc=T, ci=T); roc_object_enet
-
-# Finding the best cut for the aLASSO
-coords_lasso <- coords(roc_object_lasso, "best", best.method = "youden", 
-                       ret = c("threshold", "sensitivity", "specificity"))
-print(coords_lasso)
-
-# threshold
-corte_otimolasso <- coords_lasso$threshold
-pred1_otimizadolasso <- ifelse(n_fitlasso >= corte_otimolasso, 1, 0)
-
-metricas_precisas <- ci.coords(
-  roc_object_lasso, 
-  x = corte_otimolasso,      # threshold 
-  input = "threshold",
-  ret = c("sensitivity", "specificity", "accuracy", "ppv", "npv"),
-  conf.level = 0.95          # Nível de confiança (padrão 95%)
-)
-
-print(metricas_precisas)
-
-# Finding the best cut for aENET
-coords_enet <- coords(roc_object_enet, "best", best.method = "youden", 
-                      ret = c("threshold", "sensitivity", "specificity"))
-print(coords_enet)
-
-# threshold
-corte_otimo2enet <- coords_enet$threshold
-pred2_otimizadoenet <- ifelse(n_fitenet >= corte_otimo2enet, 1, 0)
-
-metricas_precisas1 <- ci.coords(
-  roc_object_enet, 
-  x = corte_otimo2enet,      # threshold
-  input = "threshold",       
-  ret = c("sensitivity", "specificity", "accuracy", "ppv", "npv"),
-  conf.level = 0.95          # Nível de confiança (padrão 95%)
-)
-
-print(metricas_precisas1)
-
-# Auxiliary function to extract data from ROCR into a data frame.
-extract_roc <- function(perf_obj, model_name) {
-  data.frame(
-    FPR = unlist(perf_obj@x.values),
-    TPR = unlist(perf_obj@y.values),
-    Model = model_name
-  )
-}
-
-# Predicted values for the ROC object
-preds <- prediction(as.numeric(n_fitlasso),as.factor(y.testlasso))
-preds2 <- prediction(as.numeric(n_fitenet),as.factor(y.testlasso))
-perflasso <- performance(preds, "tpr", "fpr" )
-perfenet <- performance(preds2, "tpr", "fpr" )
-
 # 4. ANALYSIS II: MULTIPLE IMPUTATION (GaLASSO & SaENET) --------------------
 # Focus: Models using Bayesian Bootstrap Predictive Mean Matching (BBPMM)
 
@@ -421,7 +363,67 @@ probs2_final_sd <- apply(probs2_mat, 1, sd)
 # Final result
 head(probs2_final)     # final average probability SaENET
 
-# Obtaining AUCs from the models
+# 5. MODEL EVALUATION & VISUALIZATION --------------------------------------
+
+# 5.1 MODEL EVALUATION
+# Obtaining AUC from models aLASSO and aENET
+roc_object_lasso <- roc(y.testlasso,n_fitlasso, auc=T, ci=T); roc_object_lasso
+roc_object_enet <- roc(y.testlasso,n_fitenet, auc=T, ci=T); roc_object_enet
+
+# Finding the best cut for the aLASSO
+coords_lasso <- coords(roc_object_lasso, "best", best.method = "youden", 
+                       ret = c("threshold", "sensitivity", "specificity"))
+print(coords_lasso)
+
+# threshold
+corte_otimolasso <- coords_lasso$threshold
+pred1_otimizadolasso <- ifelse(n_fitlasso >= corte_otimolasso, 1, 0)
+
+metricas_precisas <- ci.coords(
+  roc_object_lasso, 
+  x = corte_otimolasso,      # threshold 
+  input = "threshold",
+  ret = c("sensitivity", "specificity", "accuracy", "ppv", "npv"),
+  conf.level = 0.95          # Nível de confiança (padrão 95%)
+)
+
+print(metricas_precisas)
+
+# Finding the best cut for aENET
+coords_enet <- coords(roc_object_enet, "best", best.method = "youden", 
+                      ret = c("threshold", "sensitivity", "specificity"))
+print(coords_enet)
+
+# threshold
+corte_otimo2enet <- coords_enet$threshold
+pred2_otimizadoenet <- ifelse(n_fitenet >= corte_otimo2enet, 1, 0)
+
+metricas_precisas1 <- ci.coords(
+  roc_object_enet, 
+  x = corte_otimo2enet,      # threshold
+  input = "threshold",       
+  ret = c("sensitivity", "specificity", "accuracy", "ppv", "npv"),
+  conf.level = 0.95          # Nível de confiança (padrão 95%)
+)
+
+print(metricas_precisas1)
+
+# Auxiliary function to extract data from ROCR into a data frame.
+extract_roc <- function(perf_obj, model_name) {
+  data.frame(
+    FPR = unlist(perf_obj@x.values),
+    TPR = unlist(perf_obj@y.values),
+    Model = model_name
+  )
+}
+
+# Predicted values for the ROC object
+preds <- prediction(as.numeric(n_fitlasso),as.factor(y.testlasso))
+preds2 <- prediction(as.numeric(n_fitenet),as.factor(y.testlasso))
+perflasso <- performance(preds, "tpr", "fpr" )
+perfenet <- performance(preds2, "tpr", "fpr" )
+#------------------------------------------------------------------------------
+# Obtaining AUCs from the models GaLASSO and SaENET
 roc_object_galasso <- roc(y.test,probs_final, auc=T, ci=T);roc_object_galasso
 roc_object_saenet <- roc(y.test,probs2_final, auc=T, ci=T);roc_object_saenet
 
@@ -473,9 +475,9 @@ pred2s <- prediction(as.numeric(probs2_final), as.factor(y.test))
 perf1 <- performance(pred1s, "tpr", "fpr" )
 perf2 <- performance(pred2s, "tpr", "fpr")
 
-# 5. MODEL EVALUATION & VISUALIZATION --------------------------------------
+# 5.2 ROC AND DCA CURVES 
 
-# 5.1 ROC curves 
+# Roc curves
 # Extracting to Graph (a)
 df_cc <- rbind(
   extract_roc(perflasso, "aLASSO"),
@@ -521,8 +523,8 @@ combined_roc <- p1_roc + p2_roc +
 # View the result for ROC curves
 combined_roc
 
-
-# 5.2 DCA curves
+#------------------------------------------------------------------------------
+# DCA curves
 # Limiting probabilities
 n_fitlasso <- pmin(pmax(n_fitlasso, 0), 1)
 n_fitenet  <- pmin(pmax(n_fitenet, 0), 1)
